@@ -1,0 +1,182 @@
+# Based on https://devices.esphome.io/devices/Shelly-25
+
+substitutions:
+  name: "{{name of the device}}"
+  friendly_name: "{{friendly name}}"
+
+  channel_1: Light 1
+  channel_2: Light 2
+
+  max_power: "2000.0"
+  max_temp: "90.0"
+
+esphome:
+  name: "${name}"
+  friendly_name: "${friendly_name}"
+  project:
+    name: esphome.shelly_2-5_switch-template
+    version: "1.0"
+
+esp8266:
+  board: esp01_1m
+  restore_from_flash: true
+
+preferences:
+  flash_write_interval: 0s
+
+logger:
+
+api:
+  encryption:
+    key: !secret api_encryption_key
+
+ota:
+  password: !secret ota_password
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+
+  ap:
+    password: !secret ap_password
+
+captive_portal:
+
+web_server:
+  port: 80
+  auth:
+    username: !secret web_server_username
+    password: !secret web_server_password
+  version: 2
+  local: true
+
+text_sensor:
+  - platform: wifi_info
+    ip_address:
+      name: WiFi - IP-address
+    ssid:
+      name: WiFi - Connected SSID
+    bssid:
+      name: WiFi - Connected BSSID
+    mac_address:
+      name: WiFi - MAC-address
+    scan_results:
+      name: WiFi - Latest Scan Results
+    dns_address:
+      name: WiFi - DNS Address
+
+sensor:
+  - platform: wifi_signal
+    name: "WiFi - Signal"
+    update_interval: 60s
+    entity_category: "diagnostic"
+
+### EDIT BELOW THIS LINE ###
+
+  - platform: ade7953_i2c
+    irq_pin: GPIO16 # Prevent overheating by setting this
+    voltage:
+      name: Device - Voltage
+    # On the Shelly 2.5 channels are mixed ch1=B ch2=A
+    current_a:
+      name: Device - Current O1
+      internal: true
+    current_b:
+      name: Device - Current O2
+      internal: true
+    active_power_a:
+      name: Device - Power O2
+      id: power_channel_2
+    active_power_b:
+      name: Device - Power O1
+      id: power_channel_1
+    update_interval: 30s
+
+  - platform: total_daily_energy
+    name: Device - Power O1 (daily) 
+    power_id: power_channel_1
+    filters:
+      # Multiplication factor from W to kWh is 0.001
+      - multiply: 0.001
+    unit_of_measurement: kWh
+
+  - platform: total_daily_energy
+    name: Device - Power O2 (daily)
+    power_id: power_channel_2
+    filters:
+      # Multiplication factor from W to kWh is 0.001
+      - multiply: 0.001
+    unit_of_measurement: kWh
+
+  # NTC Temperature
+  - platform: ntc
+    sensor: temp_resistance_reading
+    name: Device - Temperature
+    unit_of_measurement: "°C"
+    accuracy_decimals: 1
+    icon: "mdi:thermometer"
+    calibration:
+      b_constant: 3350
+      reference_resistance: 10kOhm
+      reference_temperature: 298.15K
+  - platform: resistance
+    id: temp_resistance_reading
+    sensor: temp_analog_reading
+    configuration: DOWNSTREAM
+    resistor: 32kOhm
+  - platform: adc
+    id: temp_analog_reading
+    pin: A0
+
+time:
+  - platform: sntp
+    id: my_time
+
+i2c:
+  sda: GPIO12
+  scl: GPIO14
+
+status_led:
+  pin:
+    number: GPIO0
+    inverted: yes
+
+output:
+  - platform: gpio
+    pin: GPIO4
+    id: shelly_25_relay_1
+  - platform: gpio
+    pin: GPIO15
+    id: shelly_25_relay_2
+
+light:
+  - platform: binary
+    name: Device - Relay O1
+    output: shelly_25_relay_1
+    id: lightid1
+    restore_mode: RESTORE_DEFAULT_OFF
+  - platform: binary
+    name: Device - Relay O2
+    output: shelly_25_relay_2
+    id: lightid2
+    restore_mode: RESTORE_DEFAULT_OFF
+
+binary_sensor:
+  - platform: gpio
+    pin:
+      number: GPIO13
+    name: Device - Button 1
+    on_state:
+      then:
+        - light.toggle: lightid1
+  - platform: gpio
+    pin:
+      number: GPIO5
+    name: Device - Button 2
+    on_state:
+      then:
+        - light.toggle: lightid2
+
+switch:
+  - platform: restart
+    name: "Device - Restart"
