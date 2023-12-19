@@ -76,7 +76,9 @@ binary_sensor:
       mode: INPUT_PULLUP
     name: "Device - Button"
     on_press:
-      - switch.toggle: relay
+      - switch.turn_on: relay
+      - delay: 0.5s
+      - switch.turn_off: relay
   - platform: gpio
     pin:
       number: GPIO14
