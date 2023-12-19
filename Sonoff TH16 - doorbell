@@ -77,7 +77,7 @@ binary_sensor:
     name: "Device - Button"
     on_press:
       - switch.turn_on: relay
-      - delay: 0.5s
+      - delay: 0.3s
       - switch.turn_off: relay
   - platform: gpio
     pin:
@@ -90,7 +90,7 @@ binary_sensor:
           binary_sensor.is_off: connection_status
         then:
           - switch.turn_on: relay
-          - delay: 0.5s
+          - delay: 0.3s
           - switch.turn_off: relay
 
 switch:
